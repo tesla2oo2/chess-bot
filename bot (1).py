@@ -4,9 +4,9 @@ import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+BOT_TOKEN = "7571267155:AAEDDqLH_EGivgc6z_CHWmo7VmeLxTHwGNk"
 LICHESS_USER = "Niginaa"
-MINI_APP_URL = "YOUR_VERCEL_URL_HERE"  # e.g. https://chess-bot.vercel.app
+MINI_APP_URL = "https://vercel.com/new/niginas-projects-502a6b07/success?developer-id=&external-id=&redirect-url=&branch=main&deploymentUrl=chess-5ejv8zzpu-niginas-projects-502a6b07.vercel.app&projectName=chess-bot&s=https%3A%2F%2Fgithub.com%2Ftesla2oo2%2Fchess-bot&gitOrgLimit=&hasTrialAvailable=1&totalProjects=1&flow-id=ErUtqr_TNiYVnReoKmCTo"  # e.g. https://chess-bot.vercel.app
 
 def get_lichess_stats(username):
     response = requests.get(f"https://lichess.org/api/user/{username}")
