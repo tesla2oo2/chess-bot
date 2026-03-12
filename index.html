@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #1e1e1e;
+    --gold: #c9a84c;
+    --gold-dim: #7a6330;
+    --text: #e8e0d0;
+    --muted: #555;
+    --win: #4a9e6b;
+    --loss: #9e4a4a;
+    --draw: #6b6b9e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .header-info h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--gold);
+    letter-spacing: 0.5px;
+  }
+
+  .header-info p {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .rating-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .rating-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .rating-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--gold);
+    opacity: 0.4;
+  }
+
+  .rating-card.highlight::before { opacity: 1; }
+
+  .rating-label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+
+  .rating-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .rating-games {
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--gold-dim);
+    margin-bottom: 14px;
+  }
+
+  .wdl-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    gap: 2px;
+  }
+
+  .wdl-bar div { border-radius: 3px; transition: width 0.6s ease; }
+
+  .wdl-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+  }
+
+  .wdl-labels span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .chart-container {
+    position: relative;
+    height: 140px;
+  }
+
+  .games-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .game-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  .result-badge {
+    width: 28px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .result-badge.win { background: #1a3d2a; color: var(--win); }
+  .result-badge.loss { background: #3d1a1a; color: var(--loss); }
+  .result-badge.draw { background: #1a1a3d; color: var(--draw); }
+
+  .game-opponent { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .game-opening { font-size: 9px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+  .game-rating { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+
+  .streak-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .streak-label { font-size: 10px; color: var(--muted); }
+
+  .streak-dots { display: flex; gap: 4px; }
+  .streak-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--border);
+  }
+  .streak-dot.win { background: var(--win); }
+  .streak-dot.loss { background: var(--loss); }
+  .streak-dot.draw { background: var(--draw); }
+
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 16px;
+  }
+
+  .loading-chess {
+    font-size: 40px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.95); }
+  }
+
+  .loading p { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+
+  .error {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--loss);
+    font-size: 12px;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  .user-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .user-input input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  .user-input input:focus { border-color: var(--gold-dim); }
+
+  .user-input button {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  #dashboard { display: none; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">
+  <div class="loading-chess">♟</div>
+  <p>Loading board...</p>
+</div>
+
+<div id="search" style="display:none; padding-top: 20px;">
+  <div class="header">
+    <div class="avatar">♟</div>
+    <div class="header-info">
+      <h1>Chess Dashboard</h1>
+      <p>Lichess Stats Tracker</p>
+    </div>
+  </div>
+  <div class="user-input">
+    <input id="usernameInput" type="text" placeholder="Lichess username..." />
+    <button onclick="loadUser()">GO</button>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="header fade-in">
+    <div class="avatar">♟</div>
+    <div class="header-info">
+      <h1 id="username-display">—</h1>
+      <p id="member-since">lichess.org</p>
+    </div>
+  </div>
+
+  <div class="rating-grid fade-in">
+    <div class="rating-card highlight">
+      <div class="rating-label">Blitz</div>
+      <div class="rating-value" id="blitz-rating">—</div>
+      <div class="rating-games" id="blitz-games">— games</div>
+    </div>
+    <div class="rating-card">
+      <div class="rating-label">Rapid</div>
+      <div class="rating-value" id="rapid-rating">—</div>
+      <div class="rating-games" id="rapid-games">— games</div>
+    </div>
+    <div class="rating-card">
+      <div class="rating-label">Classical</div>
+      <div class="rating-value" id="classical-rating">—</div>
+      <div class="rating-games" id="classical-games">— games</div>
+    </div>
+    <div class="rating-card">
+      <div class="rating-label">Puzzles</div>
+      <div class="rating-value" id="puzzle-rating">—</div>
+      <div class="rating-games" id="puzzle-games">— solved</div>
+    </div>
+  </div>
+
+  <div class="section fade-in">
+    <div class="section-title">Win / Draw / Loss — Blitz</div>
+    <div class="wdl-bar">
+      <div id="win-bar" style="background: var(--win);"></div>
+      <div id="draw-bar" style="background: var(--draw);"></div>
+      <div id="loss-bar" style="background: var(--loss);"></div>
+    </div>
+    <div class="wdl-labels">
+      <span><span class="dot" style="background:var(--win)"></span><span id="win-pct">—</span> W</span>
+      <span><span class="dot" style="background:var(--draw)"></span><span id="draw-pct">—</span> D</span>
+      <span><span class="dot" style="background:var(--loss)"></span><span id="loss-pct">—</span> L</span>
+    </div>
+  </div>
+
+  <div class="section fade-in">
+    <div class="section-title">Recent Form</div>
+    <div class="streak-row">
+      <span class="streak-label">Last 10 games</span>
+      <div class="streak-dots" id="streak-dots"></div>
+    </div>
+  </div>
+
+  <div class="section fade-in">
+    <div class="section-title">Rating History — Blitz</div>
+    <div class="chart-container">
+      <canvas id="ratingChart"></canvas>
+    </div>
+  </div>
+
+  <div class="section fade-in">
+    <div class="section-title">Recent Games</div>
+    <div class="games-list" id="games-list"></div>
+  </div>
+</div>
+
+<script>
+  let ratingChart = null;
+  const USERNAME = new URLSearchParams(window.location.search).get('u') || null;
+
+  async function init() {
+    if (USERNAME) {
+      await fetchAndRender(USERNAME);
+    } else {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('search').style.display = 'block';
+    }
+  }
+
+  async function loadUser() {
+    const u = document.getElementById('usernameInput').value.trim();
+    if (!u) return;
+    document.getElementById('search').style.display = 'none';
+    document.getElementById('loading').style.display = 'flex';
+    await fetchAndRender(u);
+  }
+
+  document.getElementById('usernameInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadUser();
+  });
+
+  async function fetchAndRender(username) {
+    try {
+      const [userData, historyData, gamesData] = await Promise.all([
+        fetch(`https://lichess.org/api/user/${username}`).then(r => r.json()),
+        fetch(`https://lichess.org/api/user/${username}/rating-history`).then(r => r.json()),
+        fetch(`https://lichess.org/api/games/user/${username}?max=10&perfType=blitz`, {
+          headers: { 'Accept': 'application/x-ndjson' }
+        }).then(r => r.text())
+      ]);
+
+      renderDashboard(username, userData, historyData, gamesData);
+    } catch (e) {
+      document.getElementById('loading').innerHTML = `<div class="error">Could not load data for "${username}".<br>Check the username and try again.</div>`;
+    }
+  }
+
+  function renderDashboard(username, user, history, gamesRaw) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+    // Header
+    document.getElementById('username-display').textContent = user.username;
+    const joined = new Date(user.createdAt);
+    document.getElementById('member-since').textContent = `Since ${joined.toLocaleDateString('en', {month:'short', year:'numeric'})} · ${user.count?.all || 0} total games`;
+
+    // Ratings
+    const p = user.perfs;
+    document.getElementById('blitz-rating').textContent = p.blitz?.rating || '—';
+    document.getElementById('blitz-games').textContent = `${p.blitz?.games || 0} games`;
+    document.getElementById('rapid-rating').textContent = p.rapid?.rating || '—';
+    document.getElementById('rapid-games').textContent = `${p.rapid?.games || 0} games`;
+    document.getElementById('classical-rating').textContent = p.classical?.rating || '—';
+    document.getElementById('classical-games').textContent = `${p.classical?.games || 0} games`;
+    document.getElementById('puzzle-rating').textContent = p.puzzle?.rating || '—';
+    document.getElementById('puzzle-games').textContent = `${p.puzzle?.games || 0} solved`;
+
+    // WDL from stat
+    const stat = user.count;
+    if (stat) {
+      const w = stat.win || 0, d = stat.draw || 0, l = stat.loss || 0;
+      const total = w + d + l || 1;
+      const wp = Math.round(w/total*100), dp = Math.round(d/total*100), lp = 100-wp-dp;
+      document.getElementById('win-bar').style.width = wp + '%';
+      document.getElementById('draw-bar').style.width = dp + '%';
+      document.getElementById('loss-bar').style.width = lp + '%';
+      document.getElementById('win-pct').textContent = wp + '%';
+      document.getElementById('draw-pct').textContent = dp + '%';
+      document.getElementById('loss-pct').textContent = lp + '%';
+    }
+
+    // Rating history chart
+    const blitzHistory = history.find(h => h.name === 'Blitz');
+    if (blitzHistory?.points?.length) {
+      const points = blitzHistory.points.slice(-60);
+      const labels = points.map(p => {
+        const d = new Date(p[0], p[1], p[2]);
+        return d.toLocaleDateString('en', {month:'short', year:'2-digit'});
+      });
+      const ratings = points.map(p => p[3]);
+
+      if (ratingChart) ratingChart.destroy();
+      const ctx = document.getElementById('ratingChart').getContext('2d');
+      ratingChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: ratings,
+            borderColor: '#c9a84c',
+            backgroundColor: 'rgba(201,168,76,0.08)',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#c9a84c',
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: {
+            backgroundColor: '#111',
+            borderColor: '#1e1e1e',
+            borderWidth: 1,
+            titleColor: '#c9a84c',
+            bodyColor: '#e8e0d0',
+            titleFont: { family: 'IBM Plex Mono', size: 10 },
+            bodyFont: { family: 'IBM Plex Mono', size: 11 },
+          }},
+          scales: {
+            x: { 
+              ticks: { color: '#555', font: { family: 'IBM Plex Mono', size: 8 }, maxTicksLimit: 6 },
+              grid: { color: '#1e1e1e' }
+            },
+            y: { 
+              ticks: { color: '#555', font: { family: 'IBM Plex Mono', size: 9 } },
+              grid: { color: '#1e1e1e' }
+            }
+          }
+        }
+      });
+    }
+
+    // Recent games
+    const games = gamesRaw.trim().split('\n').filter(Boolean).map(l => {
+      try { return JSON.parse(l); } catch { return null; }
+    }).filter(Boolean);
+
+    // Streak dots
+    const dotsEl = document.getElementById('streak-dots');
+    dotsEl.innerHTML = '';
+    games.slice(0, 10).forEach(g => {
+      const me = g.players.white?.user?.name?.toLowerCase() === username.toLowerCase() ? 'white' : 'black';
+      const winner = g.winner;
+      let cls = 'draw';
+      if (winner === me) cls = 'win';
+      else if (winner && winner !== me) cls = 'loss';
+      const dot = document.createElement('div');
+      dot.className = `streak-dot ${cls}`;
+      dotsEl.appendChild(dot);
+    });
+
+    // Games list
+    const listEl = document.getElementById('games-list');
+    listEl.innerHTML = '';
+    games.slice(0, 8).forEach(g => {
+      const me = g.players.white?.user?.name?.toLowerCase() === username.toLowerCase() ? 'white' : 'black';
+      const opponent = me === 'white' ? g.players.black?.user?.name : g.players.white?.user?.name;
+      const opponentRating = me === 'white' ? g.players.black?.rating : g.players.white?.rating;
+      const winner = g.winner;
+      let cls = 'draw', label = 'D';
+      if (winner === me) { cls = 'win'; label = 'W'; }
+      else if (winner && winner !== me) { cls = 'loss'; label = 'L'; }
+
+      const opening = g.opening?.name?.split(':')[0] || '—';
+
+      listEl.innerHTML += `
+        <div class="game-row">
+          <div class="result-badge ${cls}">${label}</div>
+          <div class="game-opponent">${opponent || 'Anonymous'}</div>
+          <div class="game-opening">${opening}</div>
+          <div class="game-rating">${opponentRating || '?'}</div>
+        </div>`;
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>
