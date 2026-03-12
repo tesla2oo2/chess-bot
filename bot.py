@@ -81,7 +81,7 @@ async def recent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(
         "♟ Open Dashboard",
-        web_app=WebAppInfo(url=f"{MINI_APP_URL}?u={LICHESS_USER}")
+        web_app=WebAppInfo(url=MINI_APP_URL)
     )]]
     await update.message.reply_text(
         "Tap to open your chess dashboard:",
