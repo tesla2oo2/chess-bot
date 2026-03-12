@@ -28,7 +28,7 @@ def get_lichess_stats(username):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(
         "♟ Open Dashboard",
-        web_app=WebAppInfo(url=f"{MINI_APP_URL}?u={LICHESS_USER}")
+        web_app=WebAppInfo(url=MINI_APP_URL)
     )]]
     await update.message.reply_text(
         "Chess Tracker Bot\n\n/stats — quick stats\n/recent — last 5 games\n/dashboard — full dashboard",
